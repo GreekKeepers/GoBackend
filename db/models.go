@@ -130,3 +130,17 @@ type GameState struct {
 	ServerSeedID uint `gorm:"not null;" json:"server_seed_id"`
 	ServerSeed   Coin `gorm:"not null;constraint:OnDelete:CASCADE" json:"-"`
 }
+
+type ReferalLink struct {
+	ID       uint   `gorm:"primaryKey;autoIncrement"`
+	ReferTo  uint   `gorm:"not null;unique;constraint:OnDelete:CASCADE;references:User(ID)"`
+	LinkName string `gorm:"size:8;not null;unique"`
+}
+
+type Referal struct {
+	ID         uint      `gorm:"primaryKey;autoIncrement"`
+	ReferTo    uint      `gorm:"not null;constraint:OnDelete:CASCADE;references:User(ID)"`
+	ReferName  uint      `gorm:"not null;constraint:OnDelete:CASCADE;references:ReferalLink(ID)"`
+	Referal    uint      `gorm:"not null;constraint:OnDelete:CASCADE;references:User(ID)"`
+	CreateDate time.Time `gorm:"autoCreateTime"`
+}

@@ -53,6 +53,7 @@ func main() {
 	api.GeneralEndpoints(&sCtrl, router)
 	api.BetsEndpoints(&sCtrl, router)
 	api.CoinEndpoints(&sCtrl, router)
+	api.ReferalEndpoints(&sCtrl, router)
 	router.Run(fmt.Sprintf("%s:%s", env.ServerHost, env.ServerPort))
 
 }

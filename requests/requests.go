@@ -11,10 +11,15 @@ type Login struct {
 	Password string `json:"password"`
 }
 
+type CreateReferalLink struct {
+	Name string `json:"name"`
+}
+
 type RegisterUser struct {
-	Login    string `json:"login"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Login       string  `json:"login"`
+	Username    string  `json:"username"`
+	Password    string  `json:"password"`
+	ReferalLink *string `json:"referal_link"`
 }
 
 type WSrequest struct {

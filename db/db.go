@@ -26,7 +26,7 @@ func (db *DB) DecreaseBalance(userId uint, coinId uint, amount decimal.Decimal) 
 			return errors.New("Amount is greater, than balance")
 		}
 
-		if err := tx.Where("user_id=? AND coin_id=?", userId, coinId).Update("amount", balance.Amount.Sub(amount)).Error; err != nil {
+		if err := tx.Model(&Amount{}).Where("user_id=? AND coin_id=?", userId, coinId).Update("amount", balance.Amount.Sub(amount)).Error; err != nil {
 			return err
 		}
 
@@ -83,7 +83,7 @@ func (db *DB) IncreaseBalance(userId uint, coinId uint, amount decimal.Decimal) 
 			return err
 		}
 
-		if err := tx.Where("user_id=? AND coin_id=?", userId, coinId).Update("amount", balance.Amount.Add(amount)).Error; err != nil {
+		if err := tx.Model(&Amount{}).Where("user_id=? AND coin_id=?", userId, coinId).Update("amount", balance.Amount.Add(amount)).Error; err != nil {
 			return err
 		}
 

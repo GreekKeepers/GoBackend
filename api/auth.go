@@ -287,34 +287,74 @@ func (c *SharedController) Register(context *gin.Context) {
 		UserLevel: 0,
 	}
 
-	if err := c.Db.Create(user).Error; err != nil {
-		var err_msg, _ = json.Marshal(responses.ErrorMessage{Message: "Registration error"})
-		context.IndentedJSON(http.StatusInternalServerError,
-			responses.JsonResponse[json.RawMessage]{Status: responses.Err, Data: err_msg})
-		return
-	}
+	err := c.Db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("login = ?", submittedCredentials.Login).First(&existingUser).Error; err == nil {
+			slog.Error("User already exists", "Username", submittedCredentials.Username)
+			var err_msg, _ = json.Marshal(responses.ErrorMessage{Message: "User already exists"})
+			context.IndentedJSON(http.StatusInternalServerError,
+				responses.JsonResponse[json.RawMessage]{Status: responses.Err, Data: err_msg})
+			return err
+		} else if err != gorm.ErrRecordNotFound {
+			var err_msg, _ = json.Marshal(responses.ErrorMessage{Message: "Registration error"})
+			context.IndentedJSON(http.StatusInternalServerError,
+				responses.JsonResponse[json.RawMessage]{Status: responses.Err, Data: err_msg})
+			return err
+		}
 
-	amount := db.Amount{
-		UserID: user.ID,
-		CoinID: 2,
-		Amount: decimal.Zero,
-	}
-	if err := c.Db.Create(&amount).Error; err != nil {
-		var err_msg, _ = json.Marshal(responses.ErrorMessage{Message: "Amount creation error"})
-		context.IndentedJSON(http.StatusInternalServerError,
-			responses.JsonResponse[json.RawMessage]{Status: responses.Err, Data: err_msg})
-		return
-	}
+		if err := tx.Create(user).Error; err != nil {
+			var err_msg, _ = json.Marshal(responses.ErrorMessage{Message: "Registration error"})
+			context.IndentedJSON(http.StatusInternalServerError,
+				responses.JsonResponse[json.RawMessage]{Status: responses.Err, Data: err_msg})
+			return err
+		}
 
-	amount = db.Amount{
-		UserID: user.ID,
-		CoinID: 1,
-		Amount: decimal.New(1000, 0),
-	}
-	if err := c.Db.Create(&amount).Error; err != nil {
-		var err_msg, _ = json.Marshal(responses.ErrorMessage{Message: "Amount creation error"})
-		context.IndentedJSON(http.StatusInternalServerError,
-			responses.JsonResponse[json.RawMessage]{Status: responses.Err, Data: err_msg})
+		amount := db.Amount{
+			UserID: user.ID,
+			CoinID: 2,
+			Amount: decimal.Zero,
+		}
+		if err := tx.Create(&amount).Error; err != nil {
+			var err_msg, _ = json.Marshal(responses.ErrorMessage{Message: "Amount creation error"})
+			context.IndentedJSON(http.StatusInternalServerError,
+				responses.JsonResponse[json.RawMessage]{Status: responses.Err, Data: err_msg})
+			return err
+		}
+
+		amount = db.Amount{
+			UserID: user.ID,
+			CoinID: 1,
+			Amount: decimal.New(1000, 0),
+		}
+		if err := tx.Create(&amount).Error; err != nil {
+			var err_msg, _ = json.Marshal(responses.ErrorMessage{Message: "Amount creation error"})
+			context.IndentedJSON(http.StatusInternalServerError,
+				responses.JsonResponse[json.RawMessage]{Status: responses.Err, Data: err_msg})
+			return err
+		}
+
+		if submittedCredentials.ReferalLink != nil && *submittedCredentials.ReferalLink != "" {
+			referalLink := db.ReferalLink{}
+			if err := tx.Where("link_name = ?", *submittedCredentials.ReferalLink).First(&referalLink).Error; err != nil {
+				slog.Error("unknown referal", "ref", *submittedCredentials.ReferalLink, "err", err)
+				return nil
+			}
+			referal := db.Referal{
+				ReferTo:   referalLink.ReferTo,
+				ReferName: referalLink.ID,
+				Referal:   user.ID,
+			}
+			if err := tx.Create(referal).Error; err != nil {
+				slog.Error("Referal creating", "err", err)
+				var err_msg, _ = json.Marshal(responses.ErrorMessage{Message: "Registration error"})
+				context.IndentedJSON(http.StatusInternalServerError,
+					responses.JsonResponse[json.RawMessage]{Status: responses.Err, Data: err_msg})
+				return err
+			}
+		}
+		return nil
+	},
+	)
+	if err != nil {
 		return
 	}
 

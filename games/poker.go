@@ -22,8 +22,8 @@ type PokerState struct {
 }
 
 type PokerContinueData struct {
-	Replace   bool `json:"replace"`
-	ToReplace []bool
+	Replace   bool   `json:"replace"`
+	ToReplace []bool `json:"to_replace"`
 }
 
 type Poker struct {

@@ -45,6 +45,16 @@ func ParseStatefulGame(
 	gameName string,
 	params string,
 ) (games.StatefulGameEngine, error) {
+	switch gameName {
+	case "Poker":
+		var game games.Poker
+		err := json.Unmarshal([]byte(params), &game)
+		if err != nil {
+			slog.Error("Error parsing Poker", "err", err)
+			return nil, errors.New("Error parsing Poker")
+		}
+		return &game, nil
+	}
 	return nil, nil
 }
 
@@ -124,6 +134,7 @@ func (e *StatelessEngine) Run() {
 
 		if origBet.IsContinue {
 			e.StatefulBetChannel <- origBet
+			continue
 		}
 
 		bet := origBet.Bet.(requests.Bet)
@@ -132,7 +143,7 @@ func (e *StatelessEngine) Run() {
 		}
 
 		engine, ok := e.Games[bet.GameID]
-		if !ok {
+		if !ok || engine == nil {
 			slog.Warn("GameID wasn't found", "bet", bet)
 			e.StatefulBetChannel <- origBet
 			continue
@@ -317,7 +328,7 @@ func (e *StatefulEngine) Run() {
 			}
 
 			engine, ok := e.Games[bet.GameID]
-			if !ok {
+			if !ok || engine == nil {
 				slog.Warn("Stateful GameID wasn't found", "bet", bet)
 				continue
 			}
@@ -360,7 +371,7 @@ func (e *StatefulEngine) Run() {
 				timestamp,
 				engine.NumbersPerBet(),
 			)
-			gameResult, err := engine.Play(bet, randomNumbers)
+			gameResult, err := engine.StartPlaying(bet, randomNumbers)
 			if err != nil {
 				slog.Warn("Failed to proccess bet", "bet", bet, "err", err)
 				continue
@@ -570,6 +581,7 @@ func (e *StatefulEngine) Run() {
 					CoinID:       continueGame.CoinID,
 					UserSeedID:   userSeed.ID,
 					ServerSeedID: serverSeed.ID,
+					State:        gameResult.Data,
 				}
 				err = e.Db.Create(&dbBet).Error
 				if err != nil {
@@ -599,6 +611,7 @@ func (e *StatefulEngine) Run() {
 					CoinID:       continueGame.CoinID,
 					UserSeedID:   userSeed.ID,
 					ServerSeedID: serverSeed.ID,
+					State:        gameResult.Data,
 				}
 				e.Manager.ManagerReceiver <- communications.ManagerEvent{
 					Type: communications.PropagateBet,
