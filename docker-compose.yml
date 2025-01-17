@@ -1,0 +1,47 @@
+services:
+  bicas-postgres:
+    image: postgres:14-alpine
+    container_name: bicas-postgres
+    hostname: postgres
+    networks:
+      - casino
+    ports:
+      - 5432:5432
+    volumes:
+      - ${PWD}/volumes/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=Password
+      - POSTGRES_USER=User
+      - POSTGRES_DB=casino
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d casino -U User"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrations
+    networks:
+      - casino
+    depends_on:
+      bicas-postgres:
+        condition: service_healthy
+        
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      - casino
+    ports:
+      - 8080:8080
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+        
+
+networks:
+  casino:
+    driver: bridge
