@@ -343,7 +343,7 @@ func (c *SharedController) Register(context *gin.Context) {
 				ReferName: referalLink.ID,
 				Referal:   user.ID,
 			}
-			if err := tx.Create(referal).Error; err != nil {
+			if err := tx.Create(&referal).Error; err != nil {
 				slog.Error("Referal creating", "err", err)
 				var err_msg, _ = json.Marshal(responses.ErrorMessage{Message: "Registration error"})
 				context.IndentedJSON(http.StatusInternalServerError,
